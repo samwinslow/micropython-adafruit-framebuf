@@ -7,8 +7,11 @@
 # This is a direct port of the framebuf module C code to python:
 #   https://github.com/micropython/micropython/blob/master/extmod/modframebuf.c
 # Original file created by Damien P. George.
-# Python port below created by Tony DiCola.
+# Python port contributors:
+#   Tony DiCola
+#   Sam Winslow
 
+from font_petme128 import font_petme128_8x8
 
 # Framebuf format constats:
 MVLSB     = 0  # Single bit displays (like SSD1306 OLED)
@@ -140,8 +143,26 @@ class FrameBuffer:
     def scroll(self):
         raise NotImplementedError()
 
-    def text(self):
-        raise NotImplementedError()
+    def text(self, string, x0, y0, color=1):
+        for char in string:
+            # get char and make sure it is in range of font
+            c = ord(char)
+            if c < 32 or c > 127:
+                c = 127
+            # get char offset
+            i = (c - 32) * 8
+            # loop over char data
+            for j in range(0, 8):
+                if 0 <= x0 and x0 < self.width: # clip x
+                    vline_data = font_petme128_8x8[i + j]
+                y = y0
+                while vline_data: # scan over vertical column
+                    if vline_data & 1: # only draw if pixel set
+                        if 0 <= y and y < self.height: # clip y
+                            self.pixel(x0, y, color)
+                    vline_data >>= 1
+                    y += 1
+                x0 += 1
 
 
 class FrameBuffer1(FrameBuffer):
